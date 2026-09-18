@@ -1,3 +1,4 @@
+import { createHash } from "node:crypto";
 import { OrderBook } from "./orderBook.js";
 import type { Order, Trade } from "./types.js";
 
@@ -44,6 +45,17 @@ export class MatchingEngine {
 
   snapshot(symbol: string, depth = 10) {
     return this.bookFor(symbol).snapshot(this.sequence, depth);
+  }
+
+  symbols(): string[] {
+    return [...this.books.keys()].sort();
+  }
+
+  digest(): string {
+    const state = this.symbols().map((symbol) =>
+      this.snapshot(symbol, Number.MAX_SAFE_INTEGER)
+    );
+    return createHash("sha256").update(JSON.stringify(state)).digest("hex");
   }
 
   private match(taker: Order, book: OrderBook): Trade[] {
@@ -114,7 +126,7 @@ export class MatchingEngine {
       sellUserId: sellOrder.userId,
       takerSide: taker.side,
       sequence: this.sequence,
-      executedAt: Date.now(),
+      executedAt: taker.createdAt,
     };
   }
 
