@@ -8,13 +8,13 @@ const STARTING_SHARES = 1000;
 
 export class ExchangeState {
   readonly exchange: Exchange;
-  private readonly log: FileEventLog;
+  private readonly log: FileEventLog | null;
   private orders = new Map<string, Order>();
   private trades: Trade[] = [];
   private orderCounter = 0;
 
-  constructor(logPath: string) {
-    this.log = new FileEventLog(logPath);
+  constructor(logPath: string | null) {
+    this.log = logPath === null ? null : new FileEventLog(logPath);
     this.exchange = new Exchange(this.log);
   }
 
@@ -67,7 +67,7 @@ export class ExchangeState {
       .reverse();
   }
 
-  close(): void {
-    this.log.close();
+    close(): void {
+    this.log?.close();
   }
 }

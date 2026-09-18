@@ -4,12 +4,14 @@ import { registerRoutes } from "./api/routes.js";
 import { ExchangeState } from "./exchangeState.js";
 
 export interface ServerOptions {
-  logPath?: string;
+  logPath?: string | null;
   logger?: boolean;
 }
 
 export async function buildServer(options: ServerOptions = {}) {
-  const state = new ExchangeState(options.logPath ?? "data/events.jsonl");
+  const logPath =
+    options.logPath === undefined ? "data/events.jsonl" : options.logPath;
+  const state = new ExchangeState(logPath);
   const app = Fastify({ logger: options.logger ?? false });
 
   await app.register(cors, { origin: true });
