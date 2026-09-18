@@ -55,6 +55,14 @@ describe("Accounts", () => {
     expect(accounts.get("alice").cash.locked).toBe(90_000);
   });
 
+  it("reserves the notional cap for a market buy", () => {
+    const order = makeOrder("alice", "buy", "market", null, 50, "ACME", 60_000);
+    accounts.reserve(order);
+
+    expect(accounts.get("alice").cash.locked).toBe(60_000);
+    expect(accounts.availableCash("alice")).toBe(1_000_00 - 60_000);
+  });
+
   it("rejects selling shares the user does not hold", () => {
     expect(() =>
       accounts.reserve(makeOrder("alice", "sell", "limit", 5000, 10))
@@ -71,21 +79,21 @@ describe("Accounts", () => {
     expect(accounts.availableShares("bob", "ACME")).toBe(0);
   });
 
-  it("returns locked funds when an order is cancelled", () => {
+  it("returns locked funds when a buy order is cancelled unfilled", () => {
     const order = makeOrder("alice", "buy", "limit", 900, 100);
     accounts.reserve(order);
-    accounts.release(order, 100);
+    accounts.releaseBuyRemainder(order, 0);
 
     expect(accounts.availableCash("alice")).toBe(1_000_00);
     expect(accounts.get("alice").cash.locked).toBe(0);
   });
 
-  it("releases only the unfilled portion", () => {
-    const order = makeOrder("alice", "buy", "limit", 900, 100);
+  it("releases only the unfilled portion for a seller", () => {
+    const order = makeOrder("bob", "sell", "limit", 900, 100);
     accounts.reserve(order);
     accounts.release(order, 40);
 
-    expect(accounts.get("alice").cash.locked).toBe(60 * 900);
+    expect(accounts.get("bob").positions.get("ACME")?.locked).toBe(60);
   });
 
   it("moves cash and shares between the two sides on settlement", () => {
@@ -94,7 +102,8 @@ describe("Accounts", () => {
     accounts.reserve(buy);
     accounts.reserve(sell);
 
-    accounts.settle(makeTrade("alice", "bob", 900, 50), 900);
+    accounts.settle(makeTrade("alice", "bob", 900, 50));
+    accounts.releaseBuyRemainder(buy, 0);
 
     expect(accounts.get("alice").cash.total).toBe(1_000_00 - 45_000);
     expect(accounts.get("bob").cash.total).toBe(1_000_00 + 45_000);
@@ -109,7 +118,8 @@ describe("Accounts", () => {
     accounts.reserve(buy);
     accounts.reserve(sell);
 
-    accounts.settle(makeTrade("alice", "bob", 900, 50), 1000);
+    accounts.settle(makeTrade("alice", "bob", 900, 50));
+    accounts.releaseBuyRemainder(buy, 0);
 
     expect(accounts.get("alice").cash.total).toBe(1_000_00 - 45_000);
     expect(accounts.get("alice").cash.locked).toBe(0);
@@ -123,8 +133,9 @@ describe("Accounts", () => {
     accounts.reserve(buy);
     accounts.reserve(sell);
 
-    accounts.settle(makeTrade("alice", "bob", 900, 30), 900);
-    accounts.settle(makeTrade("alice", "bob", 900, 70), 900);
+    accounts.settle(makeTrade("alice", "bob", 900, 30));
+    accounts.settle(makeTrade("alice", "bob", 900, 70));
+    accounts.releaseBuyRemainder(buy, 0);
 
     expect(accounts.get("alice").cash.locked).toBe(0);
     expect(accounts.get("alice").positions.get("ACME")?.total).toBe(100);
@@ -140,7 +151,8 @@ describe("Accounts", () => {
     const sell = makeOrder("bob", "sell", "limit", 900, 50);
     accounts.reserve(buy);
     accounts.reserve(sell);
-    accounts.settle(makeTrade("alice", "bob", 900, 50), 900);
+    accounts.settle(makeTrade("alice", "bob", 900, 50));
+    accounts.releaseBuyRemainder(buy, 0);
 
     expect(accounts.totalCash()).toBe(cashBefore);
     expect(accounts.totalShares("ACME")).toBe(sharesBefore);
@@ -164,7 +176,8 @@ describe("Accounts", () => {
         break;
       }
 
-      accounts.settle(makeTrade("alice", "carol", 100, 5), 100);
+      accounts.settle(makeTrade("alice", "carol", 100, 5));
+      accounts.releaseBuyRemainder(buy, 100 * 5);
       accounts.assertInvariants();
     }
 

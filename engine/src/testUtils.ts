@@ -12,7 +12,8 @@ export function makeOrder(
   type: OrderType,
   priceInCents: number | null,
   quantity: number,
-  symbol = "ACME"
+  symbol = "ACME",
+  maxNotionalInCents: number | null = null
 ): Order {
   counter += 1;
   return {
@@ -22,10 +23,11 @@ export function makeOrder(
     side,
     type,
     priceInCents,
+    maxNotionalInCents,
     quantity,
     remainingQuantity: quantity,
     status: "open",
     sequence: 0,
-    createdAt: Date.now(),
+    createdAt: 1_700_000_000_000 + counter,
   };
 }

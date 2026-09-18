@@ -36,6 +36,7 @@ function generateCommands(count: number, seed: number): Command[] {
     const type: OrderType = random() < 0.1 ? "market" : "limit";
     const priceInCents =
       type === "market" ? null : 4900 + Math.floor(random() * 41) * 5;
+    const quantity = 1 + Math.floor(random() * 100);
 
     const order: Order = {
       id: `ord_${i}`,
@@ -44,13 +45,14 @@ function generateCommands(count: number, seed: number): Command[] {
       side,
       type,
       priceInCents,
-      quantity: 1 + Math.floor(random() * 100),
-      remainingQuantity: 0,
+      maxNotionalInCents:
+        type === "market" && side === "buy" ? quantity * 6000 : null,
+      quantity,
+      remainingQuantity: quantity,
       status: "open",
       sequence: 0,
       createdAt: 1_700_000_000_000 + i,
     };
-    order.remainingQuantity = order.quantity;
 
     if (type === "limit") {
       restingIds.push(order.id);
@@ -81,7 +83,6 @@ describe("event log and replay", () => {
     for (const command of commands) {
       log.append(command);
     }
-
     log.close();
 
     const reopened = new FileEventLog(logPath);
@@ -110,13 +111,10 @@ describe("event log and replay", () => {
         live.cancel(command.symbol, command.orderId);
       }
     }
-
-        log.close();
+    log.close();
 
     const reopened = new FileEventLog(logPath);
-    const replayed = replay(
-      reopened.readAll().map((entry) => entry.command)
-    );
+    const replayed = replay(reopened.readAll().map((entry) => entry.command));
     reopened.close();
 
     expect(replayed.engine.digest()).toBe(live.digest());

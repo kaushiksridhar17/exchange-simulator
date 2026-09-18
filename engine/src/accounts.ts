@@ -64,14 +64,21 @@ export class Accounts {
     return position.total - position.locked;
   }
 
+  buyReservation(order: Order): number {
+    if (order.priceInCents !== null) {
+      return order.priceInCents * order.quantity;
+    }
+    if (order.maxNotionalInCents === null) {
+      throw new Error("A market buy requires maxNotionalInCents");
+    }
+    return order.maxNotionalInCents;
+  }
+
   reserve(order: Order): void {
     const account = this.get(order.userId);
 
     if (order.side === "buy") {
-      if (order.priceInCents === null) {
-        throw new Error("Cannot reserve funds for a market buy without a cap");
-      }
-      const needed = order.priceInCents * order.quantity;
+      const needed = this.buyReservation(order);
       const available = account.cash.total - account.cash.locked;
       if (needed > available) {
         throw new InsufficientFunds(order.userId, needed, available);
@@ -89,29 +96,27 @@ export class Accounts {
   }
 
   release(order: Order, unfilledQuantity: number): void {
+    if (order.side === "buy") {
+      return;
+    }
     if (unfilledQuantity <= 0) {
       return;
     }
-    const account = this.get(order.userId);
-
-    if (order.side === "buy") {
-      if (order.priceInCents === null) {
-        return;
-      }
-      account.cash.locked -= order.priceInCents * unfilledQuantity;
-      return;
-    }
-
-    this.position(account, order.symbol).locked -= unfilledQuantity;
+    this.position(this.get(order.userId), order.symbol).locked -=
+      unfilledQuantity;
   }
 
-  settle(trade: Trade, buyOrderPriceInCents: number | null): void {
+    releaseBuyRemainder(order: Order, stillReservedInCents: number): void {
+    const account = this.get(order.userId);
+    const reserved = this.buyReservation(order);
+    account.cash.locked -= reserved - stillReservedInCents;
+  }
+
+  settle(trade: Trade): void {
     const buyer = this.get(trade.buyUserId);
     const seller = this.get(trade.sellUserId);
     const value = trade.priceInCents * trade.quantity;
 
-    const reservedPerShare = buyOrderPriceInCents ?? trade.priceInCents;
-    buyer.cash.locked -= reservedPerShare * trade.quantity;
     buyer.cash.total -= value;
     this.position(buyer, trade.symbol).total += trade.quantity;
 
