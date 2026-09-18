@@ -1,43 +1,50 @@
-import { OrderBook } from "./orderBook.js";
-import type { Order, Side } from "./types.js";
+import { MatchingEngine } from "./matchingEngine.js";
+import type { Order, OrderType, Side } from "./types.js";
 
-let sequence = 0;
+let counter = 0;
 
 function makeOrder(
+  userId: string,
   side: Side,
-  priceInCents: number,
+  type: OrderType,
+  priceInCents: number | null,
   quantity: number
 ): Order {
-  sequence += 1;
+  counter += 1;
   return {
-    id: `ord_${sequence}`,
-    userId: "user_1",
+    id: `ord_${counter}`,
+    userId,
     symbol: "ACME",
     side,
-    type: "limit",
+    type,
     priceInCents,
     quantity,
     remainingQuantity: quantity,
     status: "open",
-    sequence,
+    sequence: 0,
     createdAt: Date.now(),
   };
 }
 
-const book = new OrderBook("ACME");
+const engine = new MatchingEngine();
 
-book.addOrder(makeOrder("buy", 5000, 100));
-book.addOrder(makeOrder("buy", 5025, 50));
-book.addOrder(makeOrder("buy", 5025, 75));
-book.addOrder(makeOrder("buy", 4975, 200));
+engine.submit(makeOrder("alice", "sell", "limit", 5050, 100));
+engine.submit(makeOrder("bob", "sell", "limit", 5075, 100));
 
-book.addOrder(makeOrder("sell", 5100, 60));
-book.addOrder(makeOrder("sell", 5050, 40));
-book.addOrder(makeOrder("sell", 5075, 90));
+console.log("Book before any match:");
+console.log(JSON.stringify(engine.snapshot("ACME"), null, 2));
 
-console.log("Best bid:", book.bestBid());
-console.log("Best ask:", book.bestAsk());
-console.log(JSON.stringify(book.snapshot(sequence), null, 2));
+const partial = engine.submit(makeOrder("carol", "buy", "limit", 5050, 40));
+console.log("\nPartial fill trades:", partial.trades);
+console.log("Carol's order status:", partial.order.status);
 
-const front = book.peekBestOrder("buy");
-console.log("First in line at best bid:", front?.id, front?.quantity);
+const sweep = engine.submit(makeOrder("dave", "buy", "limit", 5100, 200));
+console.log("\nSweep across levels:", sweep.trades.length, "trades");
+for (const trade of sweep.trades) {
+  console.log(`  ${trade.quantity} @ ${trade.priceInCents}`);
+}
+console.log("Dave's order status:", sweep.order.status);
+console.log("Dave's remaining:", sweep.order.remainingQuantity);
+
+console.log("\nBook after:");
+console.log(JSON.stringify(engine.snapshot("ACME"), null, 2));
