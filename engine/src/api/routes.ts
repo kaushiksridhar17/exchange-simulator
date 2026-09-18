@@ -2,11 +2,12 @@ import type { FastifyInstance } from "fastify";
 import { OrderRejected } from "../exchange.js";
 import { placeOrderSchema, type PlaceOrderBody } from "./schemas.js";
 import type { ExchangeState } from "../exchangeState.js";
-import type { Order } from "../types.js";
+import type { Order, Trade } from "../types.js";
 
 export interface RouteDeps {
   state: ExchangeState;
-  onTrades?: (symbol: string) => void;
+  onOrderChange?: (symbol: string) => void;
+  onTrades?: (symbol: string, trades: Trade[]) => void;
 }
 
 export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
@@ -91,8 +92,9 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       state.recordOrder(result.order);
       state.recordTrades(result.trades);
 
+      deps.onOrderChange?.(body.symbol);
       if (result.trades.length > 0) {
-        deps.onTrades?.(body.symbol);
+        deps.onTrades?.(body.symbol, result.trades);
       }
 
       return reply.code(201).send({
@@ -121,6 +123,8 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
         .code(409)
         .send({ error: "Order is no longer active", order: existing });
     }
+
+    deps.onOrderChange?.(existing.symbol);
 
     return { order: cancelled };
   });
