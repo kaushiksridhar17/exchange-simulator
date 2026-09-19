@@ -4,7 +4,7 @@ const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
 
 async function main() {
-  const { app } = await buildServer({ logger: true });
+  const { app } = await buildServer({ logger: true, bots: true });
 
   try {
     await app.listen({ port: PORT, host: HOST });

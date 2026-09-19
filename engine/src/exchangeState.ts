@@ -30,9 +30,13 @@ export class ExchangeState {
     if (this.exchange.accounts.has(userId)) {
       return;
     }
-    this.exchange.accounts.open(userId, STARTING_CASH);
+    const isBot = userId.startsWith("mm_") || userId.startsWith("noise_");
+    const cash = isBot ? STARTING_CASH * 500 : STARTING_CASH;
+    const shares = isBot ? STARTING_SHARES * 500 : STARTING_SHARES;
+
+    this.exchange.accounts.open(userId, cash);
     for (const symbol of SYMBOLS) {
-      this.exchange.accounts.credit(userId, symbol, STARTING_SHARES);
+      this.exchange.accounts.credit(userId, symbol, shares);
     }
   }
 
