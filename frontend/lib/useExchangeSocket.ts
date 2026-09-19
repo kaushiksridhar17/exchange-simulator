@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { fetchTrades } from "./api";
 import type { OrderBookSnapshot, Trade } from "./types";
 
 const WS_URL = process.env.NEXT_PUBLIC_WS_URL ?? "ws://localhost:3001/ws";
@@ -44,6 +45,32 @@ export function useExchangeSocket(symbol: string): SocketState {
     if (socket && socket.readyState === WebSocket.OPEN) {
       socket.send(JSON.stringify({ type: "subscribe", symbol }));
     }
+
+    let cancelled = false;
+    fetchTrades(symbol)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setFeed((previous) => {
+          if (previous.symbol !== symbol) {
+            return previous;
+          }
+          const seen = new Set(previous.trades.map((trade) => trade.id));
+          const historical = result.trades.filter(
+            (trade) => !seen.has(trade.id)
+          );
+          return {
+            ...previous,
+            trades: [...previous.trades, ...historical].slice(0, MAX_TRADES),
+          };
+        });
+      })
+      .catch(() => undefined);
+
+    return () => {
+      cancelled = true;
+    };
   }, [symbol]);
 
   useEffect(() => {

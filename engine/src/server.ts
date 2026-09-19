@@ -22,7 +22,10 @@ export async function buildServer(options: ServerOptions = {}) {
   const broadcaster = new Broadcaster(state, options.broadcastIntervalMs ?? 100);
   const app = Fastify({ logger: options.logger ?? false });
 
-  await app.register(cors, { origin: true });
+  await app.register(cors, {
+    origin: true,
+    methods: ["GET", "POST", "DELETE", "OPTIONS"],
+    });
   await app.register(websocket);
 
   const onChange = (symbol: string) => broadcaster.markDirty(symbol);
