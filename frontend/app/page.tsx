@@ -8,6 +8,7 @@ import { OrderBook } from "@/components/OrderBook";
 import { TradeFeed } from "@/components/TradeFeed";
 import { OrderForm } from "@/components/OrderForm";
 import { Portfolio } from "@/components/Portfolio";
+import { PriceChart } from "@/components/PriceChart";
 
 function loadUserId(): string {
   try {
@@ -82,6 +83,10 @@ export default function Home() {
               {option}
             </button>
           ))}
+        </div>
+
+        <div className="mb-4">
+          <PriceChart symbol={symbol} trades={trades} />
         </div>
 
         <div className="grid gap-4 lg:grid-cols-4">
