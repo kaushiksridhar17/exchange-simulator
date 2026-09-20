@@ -11,7 +11,9 @@ export interface Candle {
 export const BUCKET_SECONDS = 5;
 
 function bucketFor(epochMs: number): number {
-  return Math.floor(epochMs / 1000 / BUCKET_SECONDS) * BUCKET_SECONDS;
+  const offsetMs = new Date(epochMs).getTimezoneOffset() * 60_000;
+  const local = epochMs - offsetMs;
+  return Math.floor(local / 1000 / BUCKET_SECONDS) * BUCKET_SECONDS;
 }
 
 export function buildCandles(trades: Trade[]): Candle[] {

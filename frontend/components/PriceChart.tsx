@@ -46,14 +46,7 @@ export function PriceChart({ symbol, trades }: Props) {
         timeVisible: true,
         secondsVisible: true,
       },
-      localization: {
-        timeFormatter: (time: number) =>
-          new Date(time * 1000).toLocaleTimeString([], {
-            hour: "2-digit",
-            minute: "2-digit",
-            second: "2-digit",
-          }),
-      },
+      
       crosshair: { mode: 0 },
       height: 320,
     });
