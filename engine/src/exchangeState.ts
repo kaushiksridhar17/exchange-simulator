@@ -1,5 +1,5 @@
 import { Exchange } from "./exchange.js";
-import { FileEventLog } from "./eventLog.js";
+import { FileEventLog, type LogEntry } from "./eventLog.js";
 import type { Order, Trade } from "./types.js";
 
 const SYMBOLS = ["ACME", "ZENX", "ORBT"];
@@ -12,10 +12,20 @@ export class ExchangeState {
   private orders = new Map<string, Order>();
   private trades: Trade[] = [];
   private orderCounter = 0;
+  private recoveredCount = 0;
 
   constructor(logPath: string | null) {
     this.log = logPath === null ? null : new FileEventLog(logPath);
-    this.exchange = new Exchange(this.log);
+    this.exchange = new Exchange(null);
+
+    if (this.log !== null) {
+      this.recover(this.log.readAll());
+      this.exchange.attachLog(this.log);
+    }
+  }
+
+  get recovered(): number {
+    return this.recoveredCount;
   }
 
   symbols(): string[] {
@@ -71,7 +81,39 @@ export class ExchangeState {
       .reverse();
   }
 
-    close(): void {
+  close(): void {
     this.log?.close();
+  }
+
+  private recover(entries: LogEntry[]): void {
+    let highestCounter = 0;
+
+    for (const entry of entries) {
+      const command = entry.command;
+
+      if (command.kind === "cancel") {
+        this.exchange.cancel(command.symbol, command.orderId);
+        continue;
+      }
+
+      const order = structuredClone(command.order);
+      const match = /^ord_(\d+)$/.exec(order.id);
+      if (match) {
+        highestCounter = Math.max(highestCounter, Number(match[1]));
+      }
+
+      this.ensureAccount(order.userId);
+
+      try {
+        const result = this.exchange.submit(order);
+        this.recordOrder(result.order);
+        this.recordTrades(result.trades);
+      } catch {
+        continue;
+      }
+    }
+
+    this.orderCounter = highestCounter;
+    this.recoveredCount = entries.length;
   }
 }

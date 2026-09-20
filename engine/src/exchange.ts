@@ -18,11 +18,15 @@ export class OrderRejected extends Error {
 export class Exchange {
   readonly accounts: Accounts;
   readonly engine: MatchingEngine;
-  private readonly log: FileEventLog | null;
+  private log: FileEventLog | null;
 
   constructor(log: FileEventLog | null = null) {
     this.accounts = new Accounts();
     this.engine = new MatchingEngine();
+    this.log = log;
+  }
+  
+  attachLog(log: FileEventLog): void {
     this.log = log;
   }
 
