@@ -8,7 +8,9 @@
     "start": "tsx src/index.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "bench": "tsx bench/engine.ts"
+
   },
   "keywords": [],
   "author": "",
