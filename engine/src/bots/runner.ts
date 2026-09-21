@@ -18,6 +18,9 @@ const ANCHORS: Record<string, number> = {
   ORBT: 800,
 };
 
+const LEVELS = 8;
+const QUANTITY_PER_LEVEL = 100;
+
 export class BotRunner {
   private makers: MarketMaker[] = [];
   private noise: NoiseTrader[] = [];
@@ -37,8 +40,8 @@ export class BotRunner {
             symbol,
             anchorInCents: anchor,
             spreadInCents: Math.max(2, Math.round(anchor * 0.002)),
-            levels: 5,
-            quantityPerLevel: 25,
+            levels: LEVELS,
+            quantityPerLevel: QUANTITY_PER_LEVEL,
             driftInCents: Math.max(1, Math.round(anchor * 0.003)),
           },
           random

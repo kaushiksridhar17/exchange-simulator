@@ -37,17 +37,17 @@ describe("bots", () => {
   it("quotes both sides of the book", () => {
     makeRunner().tickMakers();
 
-    const book = state.exchange.engine.snapshot("ACME", 10);
+    const book = state.exchange.engine.snapshot("ACME", 20);
     expect(book.bids.length).toBeGreaterThan(0);
     expect(book.asks.length).toBeGreaterThan(0);
   });
 
-  it("quotes five levels per side", () => {
+  it("quotes eight levels per side", () => {
     makeRunner().tickMakers();
 
-    const book = state.exchange.engine.snapshot("ACME", 10);
-    expect(book.bids).toHaveLength(5);
-    expect(book.asks).toHaveLength(5);
+    const book = state.exchange.engine.snapshot("ACME", 20);
+    expect(book.bids).toHaveLength(8);
+    expect(book.asks).toHaveLength(8);
   });
 
   it("keeps the best bid below the best ask", () => {
@@ -76,12 +76,12 @@ describe("bots", () => {
     const runner = makeRunner();
 
     runner.tickMakers();
-    const first = state.exchange.engine.snapshot("ACME", 20);
+    const first = state.exchange.engine.snapshot("ACME", 30);
 
     for (let i = 0; i < 5; i += 1) {
       runner.tickMakers();
     }
-    const later = state.exchange.engine.snapshot("ACME", 20);
+    const later = state.exchange.engine.snapshot("ACME", 30);
 
     expect(later.bids.length).toBe(first.bids.length);
     expect(later.asks.length).toBe(first.asks.length);
