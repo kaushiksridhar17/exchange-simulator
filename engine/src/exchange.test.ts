@@ -143,6 +143,27 @@ describe("Exchange", () => {
     expect(exchange.accounts.availableShares("bob", "ACME")).toBe(100);
   });
 
+  it("releases unfilled shares after a market sell partially fills", () => {
+    exchange.submit(makeOrder("alice", "buy", "limit", 5000, 4));
+    const result = exchange.submit(makeOrder("bob", "sell", "market", null, 10));
+
+    expect(result.order.status).toBe("partially_filled");
+    expect(exchange.accounts.get("bob").positions.get("ACME")?.locked).toBe(0);
+    expect(exchange.accounts.availableShares("bob", "ACME")).toBe(96);
+    exchange.accounts.assertInvariants();
+  });
+
+  it("leaves no shares locked once every market order has finished", () => {
+    exchange.submit(makeOrder("alice", "buy", "limit", 5000, 3));
+    exchange.submit(makeOrder("alice", "buy", "limit", 4900, 3));
+    exchange.submit(makeOrder("bob", "sell", "market", null, 50));
+    exchange.submit(makeOrder("carol", "sell", "market", null, 50));
+
+    expect(exchange.accounts.get("bob").positions.get("ACME")?.locked).toBe(0);
+    expect(exchange.accounts.get("carol").positions.get("ACME")?.locked).toBe(0);
+    exchange.accounts.assertInvariants();
+  });
+
   it("prevents a user from spending the same cash twice", () => {
     exchange.submit(makeOrder("alice", "buy", "limit", 5000, 20));
 
@@ -159,7 +180,7 @@ describe("Exchange", () => {
     ).toThrow(OrderRejected);
   });
 
-    it("conserves total cash and shares across a sweep", () => {
+  it("conserves total cash and shares across a sweep", () => {
     const cashBefore = exchange.accounts.totalCash();
     const sharesBefore = exchange.accounts.totalShares("ACME");
 

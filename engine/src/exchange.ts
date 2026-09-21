@@ -25,7 +25,7 @@ export class Exchange {
     this.engine = new MatchingEngine();
     this.log = log;
   }
-  
+
   attachLog(log: FileEventLog): void {
     this.log = log;
   }
@@ -52,7 +52,7 @@ export class Exchange {
 
     if (order.side === "buy") {
       this.accounts.releaseBuyRemainder(order, this.stillLocked(order));
-    } else if (order.status === "cancelled") {
+    } else if (!this.isResting(order)) {
       this.accounts.release(order, order.remainingQuantity);
     }
 
@@ -77,11 +77,15 @@ export class Exchange {
     return order;
   }
 
+  private isResting(order: Order): boolean {
+    return (
+      order.type === "limit" &&
+      (order.status === "open" || order.status === "partially_filled")
+    );
+  }
+
   private stillLocked(order: Order): number {
-    if (order.status !== "open" && order.status !== "partially_filled") {
-      return 0;
-    }
-    if (order.priceInCents === null) {
+    if (!this.isResting(order) || order.priceInCents === null) {
       return 0;
     }
     return order.priceInCents * order.remainingQuantity;

@@ -39,7 +39,9 @@ export function Portfolio({ account, onChanged }: Props) {
   }
 
   const openOrders = account.orders.filter(
-    (order) => order.status === "open" || order.status === "partially_filled"
+    (order) =>
+      order.type === "limit" &&
+      (order.status === "open" || order.status === "partially_filled")
   );
 
   return (
