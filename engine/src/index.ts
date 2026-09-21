@@ -22,6 +22,11 @@ async function main() {
     if (state.recovered > 0) {
       console.log(`Recovered ${state.recovered} commands from the event log`);
     }
+    if (database) {
+      console.log(
+        `Queued ${state.requeuedForDatabase} recovered commands for the database`
+      );
+    }
   } catch (error) {
     console.error(error);
     process.exit(1);

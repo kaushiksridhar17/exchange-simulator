@@ -44,7 +44,7 @@ export class MarketMaker {
 
   private cancelResting(): void {
     for (const orderId of this.restingIds) {
-      this.state.exchange.cancel(this.config.symbol, orderId);
+      this.state.cancelOrder(this.config.symbol, orderId);
     }
     this.restingIds = [];
   }
@@ -82,10 +82,7 @@ export class MarketMaker {
     };
 
     try {
-      const result = this.state.exchange.submit(order);
-      this.state.recordOrder(result.order);
-      this.state.recordTrades(result.trades);
-
+      const result = this.state.submitOrder(order);
       if (
         result.order.status === "open" ||
         result.order.status === "partially_filled"

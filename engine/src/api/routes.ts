@@ -88,9 +88,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
     };
 
     try {
-      const result = state.exchange.submit(order);
-      state.recordOrder(result.order);
-      state.recordTrades(result.trades);
+      const result = state.submitOrder(order);
 
       deps.onOrderChange?.(body.symbol);
       if (result.trades.length > 0) {
@@ -117,7 +115,7 @@ export function registerRoutes(app: FastifyInstance, deps: RouteDeps): void {
       return reply.code(404).send({ error: `Unknown order ${orderId}` });
     }
 
-    const cancelled = state.exchange.cancel(existing.symbol, orderId);
+    const cancelled = state.cancelOrder(existing.symbol, orderId);
     if (!cancelled) {
       return reply
         .code(409)

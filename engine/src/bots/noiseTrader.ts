@@ -52,9 +52,7 @@ export class NoiseTrader {
     };
 
     try {
-      const result = this.state.exchange.submit(order);
-      this.state.recordOrder(result.order);
-      this.state.recordTrades(result.trades);
+      const result = this.state.submitOrder(order);
 
       onChange(this.config.symbol);
       if (result.trades.length > 0) {

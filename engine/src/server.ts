@@ -7,6 +7,8 @@ import { Broadcaster } from "./ws/broadcaster.js";
 import { BotRunner } from "./bots/runner.js";
 import { ExchangeState } from "./exchangeState.js";
 import { connectDatabase, type Database } from "./db/database.js";
+import { PostgresSink, readLastLogSeq } from "./db/postgresSink.js";
+import { PersistenceWriter } from "./db/writer.js";
 import type { Trade } from "./types.js";
 
 export interface ServerOptions {
@@ -20,11 +22,28 @@ export interface ServerOptions {
 export async function buildServer(options: ServerOptions = {}) {
   const logPath =
     options.logPath === undefined ? "data/events.jsonl" : options.logPath;
+
   const database: Database | null = options.databaseUrl
     ? await connectDatabase(options.databaseUrl)
     : null;
+  const lastPersistedLogSeq = database ? await readLastLogSeq(database) : 0;
+  const writer = database
+    ? new PersistenceWriter(new PostgresSink(database))
+    : null;
+  writer?.start();
 
-  const state = new ExchangeState(logPath);
+  const state = new ExchangeState(logPath, {
+    persistence: writer,
+    lastPersistedLogSeq,
+  });
+
+  if (database && logPath !== null && lastPersistedLogSeq > state.logPosition()) {
+    console.warn(
+      `Database has log position ${lastPersistedLogSeq} but the event log only has ${state.logPosition()}. ` +
+        "The two have been reset separately; wipe both with `docker compose down -v`."
+    );
+  }
+
   const broadcaster = new Broadcaster(state, options.broadcastIntervalMs ?? 100);
   const app = Fastify({ logger: options.logger ?? false });
 
@@ -49,9 +68,10 @@ export async function buildServer(options: ServerOptions = {}) {
   app.addHook("onClose", async () => {
     bots.stop();
     broadcaster.stop();
+    await writer?.close();
     state.close();
     await database?.end();
   });
 
-  return { app, state, broadcaster, bots, database };
+  return { app, state, broadcaster, bots, database, writer };
 }
