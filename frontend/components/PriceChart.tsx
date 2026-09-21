@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   CandlestickSeries,
   createChart,
@@ -9,20 +9,77 @@ import {
   type ISeriesApi,
   type UTCTimestamp,
 } from "lightweight-charts";
-import { buildCandles } from "@/lib/candles";
+import { fetchCandles } from "@/lib/api";
+import {
+  BUCKET_SECONDS,
+  buildCandles,
+  fromServerCandles,
+  mergeCandles,
+  type Candle,
+} from "@/lib/candles";
 import type { Trade } from "@/lib/types";
+
+const HISTORY_LIMIT = 300;
 
 interface Props {
   symbol: string;
   trades: Trade[];
 }
 
+interface History {
+  symbol: string;
+  candles: Candle[];
+  loaded: boolean;
+  fromDatabase: boolean;
+}
+
 export function PriceChart({ symbol, trades }: Props) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const chartRef = useRef<IChartApi | null>(null);
   const seriesRef = useRef<ISeriesApi<"Candlestick"> | null>(null);
+  const fittedRef = useRef<string | null>(null);
 
-  const candles = useMemo(() => buildCandles(trades), [trades]);
+  const [history, setHistory] = useState<History>({
+    symbol,
+    candles: [],
+    loaded: false,
+    fromDatabase: false,
+  });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    fetchCandles(symbol, BUCKET_SECONDS, HISTORY_LIMIT)
+      .then((result) => {
+        if (cancelled) {
+          return;
+        }
+        setHistory({
+          symbol,
+          candles: result ? fromServerCandles(result) : [],
+          loaded: true,
+          fromDatabase: result !== null,
+        });
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setHistory({ symbol, candles: [], loaded: true, fromDatabase: false });
+        }
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [symbol]);
+
+  const current = history.symbol === symbol;
+  const historyLoaded = current && history.loaded;
+  const liveOnly = historyLoaded && !history.fromDatabase;
+
+  const candles = useMemo(() => {
+    const stored = history.symbol === symbol ? history.candles : [];
+    return mergeCandles(stored, buildCandles(trades));
+  }, [history, symbol, trades]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -46,7 +103,6 @@ export function PriceChart({ symbol, trades }: Props) {
         timeVisible: true,
         secondsVisible: true,
       },
-      
       crosshair: { mode: 0 },
       height: 320,
     });
@@ -92,14 +148,14 @@ export function PriceChart({ symbol, trades }: Props) {
       low: candle.low,
       close: candle.close,
     }));
-
     series.setData(data);
-    chartRef.current?.timeScale().fitContent();
-  }, [candles]);
 
-  useEffect(() => {
-    seriesRef.current?.setData([]);
-  }, [symbol]);
+    const key = `${symbol}:${historyLoaded}`;
+    if (candles.length > 0 && fittedRef.current !== key) {
+      chartRef.current?.timeScale().fitContent();
+      fittedRef.current = key;
+    }
+  }, [candles, symbol, historyLoaded]);
 
   return (
     <div className="rounded-lg border border-slate-800 bg-slate-900/40 p-4">
@@ -107,7 +163,9 @@ export function PriceChart({ symbol, trades }: Props) {
         <h2 className="text-xs uppercase tracking-widest text-slate-500">
           {symbol} price
         </h2>
-        <span className="font-mono text-xs text-slate-600">5s candles</span>
+        <span className="font-mono text-xs text-slate-600">
+          {BUCKET_SECONDS}s candles{liveOnly ? " · live only" : ""}
+        </span>
       </div>
       <div className="relative">
         <div ref={containerRef} className="w-full" />

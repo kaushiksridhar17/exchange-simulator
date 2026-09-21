@@ -4,6 +4,7 @@ import type {
   OrderBookSnapshot,
   Trade,
 } from "./types";
+import type { ServerCandle } from "./candles";
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:3001";
 
@@ -55,6 +56,24 @@ export function fetchTrades(symbol: string): Promise<{ trades: Trade[] }> {
 
 export function fetchAccount(userId: string): Promise<AccountSummary> {
   return request(`/account/${encodeURIComponent(userId)}`);
+}
+
+export async function fetchCandles(
+  symbol: string,
+  intervalSeconds: number,
+  limit: number
+): Promise<ServerCandle[] | null> {
+  try {
+    const result = await request<{ candles: ServerCandle[] }>(
+      `/candles/${symbol}?interval=${intervalSeconds}&limit=${limit}`
+    );
+    return result.candles;
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 503) {
+      return null;
+    }
+    throw error;
+  }
 }
 
 export interface PlaceOrderInput {
