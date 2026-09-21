@@ -4,14 +4,21 @@ const PORT = Number(process.env.PORT ?? 3001);
 const HOST = process.env.HOST ?? "0.0.0.0";
 const LOGGER = process.env.LOGGER !== "false";
 const BOTS = process.env.BOTS !== "false";
+const DATABASE_URL = process.env.DATABASE_URL ?? null;
 
 async function main() {
-  const { app, state } = await buildServer({ logger: LOGGER, bots: BOTS });
+  const { app, state, database } = await buildServer({
+    logger: LOGGER,
+    bots: BOTS,
+    databaseUrl: DATABASE_URL,
+  });
 
   try {
     await app.listen({ port: PORT, host: HOST });
     console.log(`Exchange API listening on http://localhost:${PORT}`);
-    console.log(`logger=${LOGGER} bots=${BOTS}`);
+    console.log(
+      `logger=${LOGGER} bots=${BOTS} database=${database ? "on" : "off"}`
+    );
     if (state.recovered > 0) {
       console.log(`Recovered ${state.recovered} commands from the event log`);
     }
