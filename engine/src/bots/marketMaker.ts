@@ -14,6 +14,7 @@ export interface MarketMakerConfig {
 export class MarketMaker {
   private anchor: number;
   private restingIds: string[] = [];
+  private adopted = false;
 
   constructor(
     private readonly state: ExchangeState,
@@ -29,17 +30,41 @@ export class MarketMaker {
   }
 
   step(onChange: (symbol: string) => void): void {
+    if (!this.adopted) {
+      this.adoptExisting();
+      this.adopted = true;
+    }
     this.cancelResting();
     this.drift();
     this.quote(onChange);
   }
 
+  private adoptExisting(): void {
+    for (const order of this.state.ordersFor(this.config.userId)) {
+      if (
+        order.symbol === this.config.symbol &&
+        order.type === "limit" &&
+        (order.status === "open" || order.status === "partially_filled")
+      ) {
+        this.restingIds.push(order.id);
+      }
+    }
+
+    const lastTrade = this.state.recentTrades(this.config.symbol, 1)[0];
+    if (lastTrade) {
+      this.anchor = this.clamp(lastTrade.priceInCents);
+    }
+  }
+
   private drift(): void {
     const move = Math.round((this.random() - 0.5) * 2 * this.config.driftInCents);
-    const next = this.anchor + move;
+    this.anchor = this.clamp(this.anchor + move);
+  }
+
+  private clamp(priceInCents: number): number {
     const floor = Math.round(this.config.anchorInCents * 0.7);
     const ceiling = Math.round(this.config.anchorInCents * 1.3);
-    this.anchor = Math.min(ceiling, Math.max(floor, next));
+    return Math.min(ceiling, Math.max(floor, priceInCents));
   }
 
   private cancelResting(): void {
