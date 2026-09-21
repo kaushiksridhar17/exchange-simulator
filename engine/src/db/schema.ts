@@ -37,6 +37,9 @@ CREATE TABLE IF NOT EXISTS orders (
 CREATE INDEX IF NOT EXISTS orders_user_created
   ON orders (user_id, created_at DESC);
 
+CREATE INDEX IF NOT EXISTS orders_user_sequence
+  ON orders (user_id, sequence DESC);
+
 CREATE TABLE IF NOT EXISTS persistence_state (
   key TEXT PRIMARY KEY,
   value BIGINT NOT NULL

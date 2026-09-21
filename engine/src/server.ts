@@ -2,6 +2,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import websocket from "@fastify/websocket";
 import { registerRoutes } from "./api/routes.js";
+import { registerHistoryRoutes } from "./api/history.js";
 import { registerWebSocket } from "./ws/routes.js";
 import { Broadcaster } from "./ws/broadcaster.js";
 import { BotRunner } from "./bots/runner.js";
@@ -58,6 +59,7 @@ export async function buildServer(options: ServerOptions = {}) {
     broadcaster.publishTrades(symbol, trades);
 
   registerRoutes(app, { state, onOrderChange: onChange, onTrades });
+  registerHistoryRoutes(app, { state, database });
   registerWebSocket(app, broadcaster);
 
   const bots = new BotRunner({ state, onChange, onTrades });
